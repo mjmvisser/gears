@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import subprocess
+import re
+
+import mokpipe
+
+# expected args: type id
+
+entity_type = sys.argv[1]
+entity_id = int(sys.argv[2])
+
+sg = mokpipe.shotgun.getSG()
+
+if entity_type == 'Task':
+    sg_task = sg.find_one('Task', [['id', 'is', entity_id]], ['project', 'step', 'entity'])
+    sg_project = sg.find_one('Project', [['id', 'is', sg_task['project']['id']]], ['name'])
+    sg_step = sg.find_one('Step', [['id', 'is', sg_task['step']['id']]], ['short_name'])
+   
+    if re.match(r'\d{3}_.*', sg_project['name']):
+        project = sg_project['name'][4:]
+    else:
+        project = sg_project['name']
+
+    step = sg_step['short_name']
+
+    if sg_task['entity']['type'] == 'Shot':
+        sg_shot = sg.find_one(sg_task['entity']['type'], [['id', 'is', sg_task['entity']['id']]], ['sg_sequence', 'code'])
+
+        work_type = 'shot'
+        group = sg_shot['sg_sequence']['name']
+        item = sg_shot['code'][len(group)+1:]
+        
+    elif sg_task['entity']['type'] == 'Asset':
+        sg_asset = sg.find_one(sg_task['entity']['type'], [['id', 'is', sg_task['entity']['id']]], ['sg_asset_type', 'code'])
+
+        work_type = 'asset'
+        group = mokpipe.shotgun.getAssetTypeDB(sg_asset['sg_asset_type'])
+        item = sg_asset['code']
+
+    else:
+        assert False
+        
+    mokpipe.dumper.SetWork(project, work_type, group, item, step).setenv(only_mokko=False)
+
+    subprocess.call('nohup maya &', shell=True)
+else:
+    sys.exit(1)

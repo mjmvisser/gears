@@ -1,0 +1,11 @@
+#!/bin/bash
+
+GEARS_LOCATION=$(dirname "$0")
+
+if [[ "$1" = "shotgun_get_actions" ]]; then
+    cat "${GEARS_LOCATION}/actions/$2"
+elif [[ "$1" = "shotgun_run_action" ]]; then
+    exec "${GEARS_LOCATION}/bin/$2" "$3" "$4"
+else
+    exit 2
+fi

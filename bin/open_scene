@@ -1,0 +1,65 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import subprocess
+import re
+
+import mokpipe
+
+# expected args: type id
+
+entity_type = sys.argv[1]
+entity_id = int(sys.argv[2])
+
+sg = mokpipe.shotgun.getSG()
+
+if entity_type == 'Version':
+    sg_version = sg.find_one('Version', [['id', 'is', entity_id]], ['project', 'entity', 'sg_step'])
+    sg_project = sg.find_one('Project', [['id', 'is', sg_version['project']['id']]], ['name'])
+    sg_step = sg.find_one('Step', [['id', 'is', sg_version['sg_step']['id']]], ['short_name'])
+   
+    if re.match(r'\d{3}_.*', sg_project['name']):
+        project = sg_project['name'][4:]
+    else:
+        project = sg_project['name']
+
+    step = sg_step['short_name']
+    
+    if sg_version['entity']['type'] == 'Shot':
+        sg_shot = sg.find_one(sg_version['entity']['type'], [['id', 'is', sg_version['entity']['id']]], ['sg_sequence', 'code'])
+
+        work_type = 'shot'
+        group = sg_shot['sg_sequence']['name']
+        item = sg_shot['code'][len(group)+1:]
+        
+    elif sg_version['entity']['type'] == 'Asset':
+        sg_asset = sg.find_one(sg_version['entity']['type'], [['id', 'is', sg_version['entity']['id']]], ['sg_asset_type', 'code'])
+
+        work_type = 'asset'
+        group = mokpipe.shotgun.getAssetTypeDB(sg_asset['sg_asset_type'])
+        item = sg_asset['code']
+
+    else:
+        assert False
+        
+    sg_publish_event = sg.find_one('PublishEvent', [['sg_release_version', 'is', sg_version],
+                                                    ['sg_category', 'is', 'source']], 
+                                   ['sg_path'])
+
+    if sg_publish_event:    
+        source_path = sg_publish_event['sg_path']
+        
+        
+        mokpipe.dumper.SetWork(project, work_type, group, item, step).setenv(only_mokko=False)
+    
+        ext = os.path.splitext(source_path)[1].lstrip('.')
+        
+        if ext in ('ma', 'mb'):
+            subprocess.call('nohup maya -file "' + source_path + '" &', shell=True)
+        elif ext == 'nk':
+            subprocess.call('nohup $NUKE_EXEC "' + source_path + '" &', shell=True)
+    else:
+        sys.exit(1)
+else:
+    sys.exit(1)
