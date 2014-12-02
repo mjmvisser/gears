@@ -46,5 +46,18 @@ if entity_type == 'Task':
     mokpipe.dumper.SetWork(project, work_type, group, item, step).setenv(only_mokko=False)
 
     subprocess.call('nohup $NUKE_EXEC &', shell=True)
+
+elif entity_type == 'Project':
+    sg_project = sg.find_one('Project', [['id', 'is', entity_id]], ['name'])
+
+    if re.match(r'\d{3}_.*', sg_project['name']):
+        project = sg_project['name'][4:]
+    else:
+        project = sg_project['name']
+
+    mokpipe.dumper.SetWork(project, 'temp').setenv(only_mokko=False)
+
+    subprocess.call('nohup $NUKE_EXEC &', shell=True)
+    
 else:
     sys.exit(1)

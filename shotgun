@@ -2,10 +2,13 @@
 
 GEARS_LOCATION=$(dirname "$0")
 
-if [[ "$1" = "shotgun_get_actions" ]]; then
-    cat "${GEARS_LOCATION}/actions/$2"
-elif [[ "$1" = "shotgun_run_action" ]]; then
-    exec "${GEARS_LOCATION}/bin/$2" "$3" "$4"
+action_config="${GEARS_LOCATION}/actions/$2"
+action_bin="${GEARS_LOCATION}/bin/$2"
+
+if [[ "$1" = "shotgun_get_actions" && -f "$action_config" && -r "$action_config" ]]; then
+    cat "$action_config"
+elif [[ "$1" = "shotgun_run_action" && -f "$action_bin" && -x "$action_bin" ]]; then
+    exec "$action_bin" "$3" "$4"
 else
-    exit 2
+    exit 0
 fi

@@ -1,0 +1,2 @@
+open_maya$Open Maya$$False
+open_nuke$Open Nuke$$False
